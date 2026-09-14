@@ -4,13 +4,13 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
-  Check, ChevronDown, CircleAlert, Clock3, FileAudio, FileImage, FilePlus2,
+  Check, ChevronDown, CircleAlert, Clock3, FileAudio, FileImage, FilePlus2, FileText,
   FileVideo, FolderOpen, HardDrive, Image as ImageIcon, LoaderCircle, LockKeyhole,
   Play, ShieldCheck, Sparkles, Trash2, X, Zap,
 } from "lucide-react";
 import "./App.css";
 
-type FileCategory = "image" | "audio" | "video" | "unknown";
+type FileCategory = "image" | "audio" | "video" | "document" | "unknown";
 type JobStatus = "ready" | "waiting" | "converting" | "done" | "error" | "cancelled";
 type InspectedFile = { path: string; name: string; size: number; mime: string; category: FileCategory; targets: string[] };
 type QueueItem = InspectedFile & { id: string; target: string; status: JobStatus; progress: number; error?: string; outputPath?: string };
@@ -29,7 +29,7 @@ const shortPath = (path: string) => {
   const parts = path.replace(/\//g, "\\").split("\\");
   return parts.length > 2 ? `…\\${parts.slice(-2).join("\\")}` : path;
 };
-const categoryIcon = (category: FileCategory) => category === "image" ? FileImage : category === "video" ? FileVideo : category === "audio" ? FileAudio : FilePlus2;
+const categoryIcon = (category: FileCategory) => category === "image" ? FileImage : category === "video" ? FileVideo : category === "audio" ? FileAudio : category === "document" ? FileText : FilePlus2;
 
 function App() {
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -113,13 +113,13 @@ function App() {
     </header>
     <main className="workspace">
       <section className="intro">
-        <div><p className="eyebrow"><ShieldCheck size={15} /> Vos fichiers ne quittent jamais cet ordinateur</p><h1>Convertissez. Simplement.</h1><p className="subtitle">Images, vidéos et fichiers audio — rapides, privés et sans limite.</p></div>
+        <div><p className="eyebrow"><ShieldCheck size={15} /> Vos fichiers ne quittent jamais cet ordinateur</p><h1>Convertissez. Simplement.</h1><p className="subtitle">Images, vidéos, fichiers audio et documents — rapides, privés et sans limite.</p></div>
         <div className="privacy-card"><span className="privacy-icon"><HardDrive size={21} /></span><div><strong>Traitement hors ligne</strong><small>Aucun téléversement, aucune attente</small></div></div>
       </section>
       <section className={`drop-zone ${isDragging ? "dragging" : ""}`} onClick={pickFiles}>
         <div className="drop-visual"><span className="file-card back"><FileVideo size={22} /></span><span className="file-card front"><ImageIcon size={25} /></span><span className="plus-badge">+</span></div>
         <h2>{isDragging ? "Déposez-les ici" : "Glissez vos fichiers ici"}</h2><p>ou cliquez pour les sélectionner</p>
-        <button className="secondary-button" type="button"><FilePlus2 size={17} /> Parcourir les fichiers</button><span className="formats">PNG, JPG, WEBP, MP4, WEBM, MP3, WAV, FLAC ET PLUS</span>
+        <button className="secondary-button" type="button"><FilePlus2 size={17} /> Parcourir les fichiers</button><span className="formats">PNG, JPG, MP4, MP3, DOCX, PDF, EPUB, MARKDOWN ET PLUS</span>
       </section>
       {notice && <div className="notice"><CircleAlert size={17} /><span>{notice}</span><button onClick={() => setNotice("")}><X size={15} /></button></div>}
       <section className="queue-card">

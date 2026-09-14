@@ -6,7 +6,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_shell::{process::CommandEvent, ShellExt};
@@ -59,6 +59,12 @@ fn detected_type(path: &Path) -> (String, &'static str) {
         || ["mp3", "wav", "flac", "aac", "ogg", "m4a", "opus"].contains(&extension.as_str())
     {
         "audio"
+    } else if [
+        "docx", "md", "markdown", "html", "htm", "epub", "txt", "tex", "latex", "odt", "pdf",
+    ]
+    .contains(&extension.as_str())
+    {
+        "document"
     } else {
         "unknown"
     };
@@ -71,17 +77,28 @@ fn targets_for(path: &Path, category: &str) -> Vec<&'static str> {
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
+    if category == "document" && source_extension == "pdf" {
+        return Vec::new();
+    }
     let candidates: &[&str] = match category {
         "image" => &["png", "jpg", "webp", "bmp", "tiff", "ico"],
         "video" => &["mp4", "mkv", "webm", "avi", "mov"],
         "audio" => &["mp3", "wav", "flac", "ogg", "aac", "m4a"],
+        "document" => &["pdf", "docx", "md", "html", "epub", "txt", "tex"],
         _ => &[],
     };
     candidates
         .iter()
         .copied()
         .filter(|target| {
-            *target != source_extension && !(source_extension == "jpeg" && *target == "jpg")
+            let equivalent_source = match source_extension.as_str() {
+                "jpeg" => "jpg",
+                "markdown" => "md",
+                "htm" => "html",
+                "latex" => "tex",
+                other => other,
+            };
+            *target != equivalent_source
         })
         .collect()
 }
@@ -192,7 +209,7 @@ async fn convert_media(
         .sidecar("ffmpeg")
         .map_err(|error| format!("FFmpeg intégré est indisponible : {error}"))?
         .args(arguments);
-    let (mut events, mut child) = sidecar
+    let (mut events, child) = sidecar
         .spawn()
         .map_err(|error| format!("Impossible de démarrer FFmpeg : {error}"))?;
 
@@ -220,6 +237,157 @@ async fn convert_media(
     }
     emit_progress(&app, &job_id, 95.0, "Finalisation");
     Ok(())
+}
+
+fn pandoc_reader(source: &Path) -> &'static str {
+    match source
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "docx" => "docx",
+        "html" | "htm" => "html",
+        "epub" => "epub",
+        "tex" | "latex" => "latex",
+        "odt" => "odt",
+        "md" | "markdown" => "gfm",
+        _ => "markdown",
+    }
+}
+
+fn pandoc_writer(target: &str) -> &'static str {
+    match target {
+        "md" => "gfm",
+        "html" => "html5",
+        "txt" => "plain",
+        "tex" => "latex",
+        "docx" => "docx",
+        "epub" => "epub",
+        _ => "typst",
+    }
+}
+
+async fn run_document_engine(
+    app: &AppHandle,
+    binary: &str,
+    display_name: &str,
+    arguments: Vec<String>,
+    cancelled: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let sidecar = app
+        .shell()
+        .sidecar(binary)
+        .map_err(|error| format!("{display_name} intégré est indisponible : {error}"))?
+        .args(arguments);
+    let (mut events, child) = sidecar
+        .spawn()
+        .map_err(|error| format!("Impossible de démarrer {display_name} : {error}"))?;
+    let mut error_output = String::new();
+
+    loop {
+        if cancelled.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            return Err("Conversion annulée.".to_string());
+        }
+        tokio::select! {
+            event = events.recv() => match event {
+                Some(CommandEvent::Stderr(bytes)) => {
+                    if error_output.len() < 3000 {
+                        error_output.push_str(&String::from_utf8_lossy(&bytes));
+                    }
+                }
+                Some(CommandEvent::Terminated(payload)) if payload.code == Some(0) => return Ok(()),
+                Some(CommandEvent::Terminated(_)) | None => {
+                    let detail = error_output.trim();
+                    return Err(if detail.is_empty() {
+                        format!("{display_name} n’a pas pu convertir ce document.")
+                    } else {
+                        format!("{display_name} : {detail}")
+                    });
+                }
+                _ => {}
+            },
+            _ = tokio::time::sleep(Duration::from_millis(120)) => {}
+        }
+    }
+}
+
+async fn convert_document(
+    app: AppHandle,
+    job_id: String,
+    source: PathBuf,
+    destination: PathBuf,
+    target_format: &str,
+    cancelled: Arc<AtomicBool>,
+) -> Result<(), String> {
+    let source_parent = source.parent().unwrap_or_else(|| Path::new("."));
+    let reader = pandoc_reader(&source);
+
+    if target_format != "pdf" {
+        emit_progress(&app, &job_id, 20.0, "Lecture du document");
+        let arguments = vec![
+            source.to_string_lossy().to_string(),
+            format!("--from={reader}"),
+            format!("--to={}", pandoc_writer(target_format)),
+            "--standalone".to_string(),
+            format!("--resource-path={}", source_parent.to_string_lossy()),
+            format!("--output={}", destination.to_string_lossy()),
+        ];
+        let result = run_document_engine(&app, "pandoc", "Pandoc", arguments, &cancelled).await;
+        if result.is_err() || cancelled.load(Ordering::Relaxed) {
+            let _ = std::fs::remove_file(&destination);
+        }
+        result?;
+        emit_progress(&app, &job_id, 94.0, "Finalisation du document");
+        return Ok(());
+    }
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let temporary_directory = std::env::temp_dir().join(format!(
+        "convertisseur-local-{}-{timestamp}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&temporary_directory)
+        .map_err(|error| format!("Impossible de préparer la conversion PDF : {error}"))?;
+    let intermediate = temporary_directory.join("document.typ");
+
+    let conversion_result = async {
+        emit_progress(&app, &job_id, 18.0, "Préparation du document");
+        let pandoc_arguments = vec![
+            source.to_string_lossy().to_string(),
+            format!("--from={reader}"),
+            "--to=typst".to_string(),
+            "--standalone".to_string(),
+            format!("--resource-path={}", source_parent.to_string_lossy()),
+            format!("--extract-media={}", temporary_directory.to_string_lossy()),
+            format!("--output={}", intermediate.to_string_lossy()),
+        ];
+        run_document_engine(&app, "pandoc", "Pandoc", pandoc_arguments, &cancelled).await?;
+
+        emit_progress(&app, &job_id, 62.0, "Création du PDF");
+        let typst_arguments = vec![
+            "compile".to_string(),
+            "--root".to_string(),
+            temporary_directory.to_string_lossy().to_string(),
+            intermediate.to_string_lossy().to_string(),
+            destination.to_string_lossy().to_string(),
+        ];
+        run_document_engine(&app, "typst", "Typst", typst_arguments, &cancelled).await?;
+        emit_progress(&app, &job_id, 95.0, "Finalisation du PDF");
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_dir_all(&temporary_directory);
+    if conversion_result.is_err() || cancelled.load(Ordering::Relaxed) {
+        let _ = std::fs::remove_file(&destination);
+    }
+    conversion_result
 }
 
 #[tauri::command]
@@ -265,6 +433,16 @@ async fn convert_file(
             job_id.clone(),
             source,
             destination.clone(),
+            cancelled,
+        )
+        .await
+    } else if category == "document" {
+        convert_document(
+            app.clone(),
+            job_id.clone(),
+            source,
+            destination.clone(),
+            &target_format,
             cancelled,
         )
         .await
@@ -328,5 +506,18 @@ mod tests {
     #[test]
     fn unsupported_files_have_no_targets() {
         assert!(targets_for(Path::new("notes.xyz"), "unknown").is_empty());
+    }
+
+    #[test]
+    fn editable_documents_offer_pdf_and_exclude_the_source_format() {
+        let targets = targets_for(Path::new("rapport.docx"), "document");
+        assert!(targets.contains(&"pdf"));
+        assert!(targets.contains(&"md"));
+        assert!(!targets.contains(&"docx"));
+    }
+
+    #[test]
+    fn pdf_is_output_only() {
+        assert!(targets_for(Path::new("archive.pdf"), "document").is_empty());
     }
 }
