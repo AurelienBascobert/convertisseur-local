@@ -1,0 +1,13 @@
+FFmpeg 9.0.1 - Essentials Build for Windows 64-bit
+
+Binary distribution:
+https://www.gyan.dev/ffmpeg/builds/
+
+Corresponding FFmpeg source revision:
+https://github.com/FFmpeg/FFmpeg/commit/bf1b838f2a
+
+FFmpeg project source:
+https://github.com/FFmpeg/FFmpeg
+
+This FFmpeg binary is distributed under the GNU General Public License v3.
+The complete license text is included in FFmpeg-GPLv3.txt.

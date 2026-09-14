@@ -1,0 +1,65 @@
+# Convertisseur Local
+
+Application Windows de conversion de fichiers construite avec React, Tauri 2 et Rust. Les fichiers sont traités sur l’ordinateur et ne sont envoyés vers aucun service distant.
+
+![Aperçu de Convertisseur Local](docs/preview.png)
+
+## Installation
+
+Ouvrez la section **Releases** du dépôt, téléchargez `Convertisseur-Local-x64-Setup.exe`, puis lancez-le. FFmpeg est déjà inclus dans l’installeur : aucune dépendance supplémentaire n’est nécessaire.
+
+L’installeur communautaire n’étant pas signé par un certificat commercial, Windows peut afficher un avertissement « Éditeur inconnu ».
+
+## Fonctionnalités du MVP
+
+- ajout de plusieurs fichiers par glisser-déposer ou avec le sélecteur Windows ;
+- détection du type réel grâce à la signature du fichier ;
+- conversion d’images en PNG, JPEG, WebP, BMP, TIFF ou ICO avec Rust ;
+- conversion audio et vidéo via FFmpeg intégré ;
+- file d’attente, états de progression, annulation et noms de sortie sans écrasement ;
+- choix du dossier de destination ;
+- interface entièrement locale en français.
+
+## Prérequis Windows
+
+1. Node.js et pnpm ;
+2. Rust avec la cible MSVC ;
+3. Microsoft C++ Build Tools, avec la charge de travail « Développement Desktop en C++ » ;
+4. WebView2, généralement déjà présent sur Windows 10 et 11 ;
+
+Avant de compiler le projet cloné, préparez le sidecar FFmpeg :
+
+```powershell
+.\scripts\prepare-ffmpeg.ps1
+```
+
+FFmpeg est intégré au paquet Windows : l’utilisateur final n’a rien à installer séparément.
+
+## Lancer l’application
+
+```powershell
+pnpm install
+pnpm tauri dev
+```
+
+## Construire l’installeur Windows
+
+```powershell
+pnpm tauri build
+```
+
+Le résultat sera créé dans `src-tauri/target/release/bundle`.
+
+## Contrôles disponibles
+
+```powershell
+pnpm build
+cd src-tauri
+cargo test
+```
+
+## Suite recommandée
+
+FFmpeg 9.0.1 Essentials est distribué comme sidecar sous GPLv3. Sa licence et le lien vers le code source correspondant sont inclus dans `src-tauri/third-party`.
+
+La prochaine étape fonctionnelle consiste à ajouter les documents et archives.
