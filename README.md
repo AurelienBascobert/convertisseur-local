@@ -6,7 +6,7 @@ Application Windows de conversion de fichiers construite avec React, Tauri 2 et 
 
 ## Installation
 
-[Téléchargez la dernière version Windows](https://github.com/AurelienBascobert/convertisseur-local/releases/latest), puis lancez `Convertisseur-Local-0.1.0-x64-Setup.exe`. FFmpeg est déjà inclus dans l’installeur : aucune dépendance supplémentaire n’est nécessaire.
+[Téléchargez la dernière version Windows](https://github.com/AurelienBascobert/convertisseur-local/releases/latest), puis lancez `Convertisseur-Local-0.2.0-x64-Setup.exe`. Les moteurs de conversion sont déjà inclus dans l’installeur : aucune dépendance supplémentaire n’est nécessaire.
 
 L’installeur communautaire n’étant pas signé par un certificat commercial, Windows peut afficher un avertissement « Éditeur inconnu ».
 
@@ -16,6 +16,8 @@ L’installeur communautaire n’étant pas signé par un certificat commercial,
 - détection du type réel grâce à la signature du fichier ;
 - conversion d’images en PNG, JPEG, WebP, BMP, TIFF ou ICO avec Rust ;
 - conversion audio et vidéo via FFmpeg intégré ;
+- conversion de documents entre DOCX, Markdown, HTML, EPUB, TXT et LaTeX via Pandoc intégré ;
+- création de PDF à partir de documents via Pandoc et Typst intégrés ;
 - file d’attente, états de progression, annulation et noms de sortie sans écrasement ;
 - choix du dossier de destination ;
 - interface entièrement locale en français.
@@ -27,13 +29,16 @@ L’installeur communautaire n’étant pas signé par un certificat commercial,
 3. Microsoft C++ Build Tools, avec la charge de travail « Développement Desktop en C++ » ;
 4. WebView2, généralement déjà présent sur Windows 10 et 11 ;
 
-Avant de compiler le projet cloné, préparez le sidecar FFmpeg :
+Avant de compiler le projet cloné, préparez les moteurs intégrés :
 
 ```powershell
 .\scripts\prepare-ffmpeg.ps1
+.\scripts\prepare-document-engines.ps1
 ```
 
-FFmpeg est intégré au paquet Windows : l’utilisateur final n’a rien à installer séparément.
+FFmpeg, Pandoc et Typst sont intégrés au paquet Windows : l’utilisateur final n’a rien à installer séparément.
+
+> Le PDF est actuellement un format de sortie. La conversion d’un PDF existant vers un format éditable n’est pas encore proposée.
 
 ## Lancer l’application
 
@@ -60,6 +65,6 @@ cargo test
 
 ## Suite recommandée
 
-FFmpeg 9.0.1 Essentials est distribué comme sidecar sous GPLv3. Sa licence et le lien vers le code source correspondant sont inclus dans `src-tauri/third-party`.
+FFmpeg 9.0.1 Essentials, Pandoc 3.11 et Typst 0.15.1 sont distribués comme sidecars. Leurs licences et les liens vers les codes sources correspondants sont inclus dans `src-tauri/third-party`.
 
-La prochaine étape fonctionnelle consiste à ajouter les documents et archives.
+La prochaine étape fonctionnelle consiste à ajouter la conversion des archives et, plus tard, l’import de PDF vers des formats éditables.

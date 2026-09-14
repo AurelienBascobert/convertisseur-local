@@ -1,0 +1,10 @@
+Typst 0.15.1 for Windows 64-bit
+
+Binary distribution and corresponding source:
+https://github.com/typst/typst/releases/tag/v0.15.1
+
+Project source:
+https://github.com/typst/typst
+
+Typst is distributed under the Apache License 2.0.
+The complete license text is included in Typst-Apache-2.0.txt.

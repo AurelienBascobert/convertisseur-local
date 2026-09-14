@@ -1,6 +1,6 @@
 [package]
 name = "convertisseur-local"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convertisseur de fichiers local, privé et hors ligne"
 authors = ["Convertisseur Local"]
 edition = "2021"

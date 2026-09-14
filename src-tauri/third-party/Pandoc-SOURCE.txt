@@ -1,0 +1,10 @@
+Pandoc 3.11 for Windows 64-bit
+
+Binary distribution and corresponding source:
+https://github.com/jgm/pandoc/releases/tag/3.11
+
+Project source:
+https://github.com/jgm/pandoc
+
+Pandoc is distributed under the GNU General Public License v2 or later.
+The complete license text is included in Pandoc-GPLv2.txt.
