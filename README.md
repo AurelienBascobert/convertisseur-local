@@ -6,7 +6,7 @@ Application Windows de conversion de fichiers construite avec React, Tauri 2 et 
 
 ## Installation
 
-Ouvrez la section **Releases** du dépôt, téléchargez `Convertisseur-Local-x64-Setup.exe`, puis lancez-le. FFmpeg est déjà inclus dans l’installeur : aucune dépendance supplémentaire n’est nécessaire.
+[Téléchargez la dernière version Windows](https://github.com/AurelienBascobert/convertisseur-local/releases/latest), puis lancez `Convertisseur-Local-0.1.0-x64-Setup.exe`. FFmpeg est déjà inclus dans l’installeur : aucune dépendance supplémentaire n’est nécessaire.
 
 L’installeur communautaire n’étant pas signé par un certificat commercial, Windows peut afficher un avertissement « Éditeur inconnu ».
 
